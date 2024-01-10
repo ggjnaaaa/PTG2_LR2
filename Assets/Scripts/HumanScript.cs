@@ -7,11 +7,12 @@ public class HumanScript : MonoBehaviour
     GameObject pivot;                       // Точка примерно в середине персонажа (за основу берётся точка от объекта Mesh внутри HumanMale_Character_FREE)
     Rigidbody rb;
     bool isWalkNow;                         // Идёт ли персонаж сейчас
+    bool isWalkBackwardNow;                 // Идёт ли персонаж назад сейчас
     bool isRunNow;                          // Бежит ли персонаж сейчас
     bool isGroundingNow;                    // Приземляется ли персонаж сейчас
     bool isJumpNow;                         // Прыгнул ли персонаж только что
     bool isStandNow;                        // Стоит ли персонаж сейчас
-    bool lastW;                             // Было ли нажатие W недавно
+    bool lastWS;                             // Было ли нажатие W недавно
     float initialLengthFromGroundToPivot;   // Отслеживает расстояние от пивота до земли пока персонаж стоит
 
     void Start()
@@ -21,11 +22,12 @@ public class HumanScript : MonoBehaviour
         pivot = GameObject.FindGameObjectWithTag("pivot");
         rb = GetComponent<Rigidbody>();
         isWalkNow = false;
+        isWalkBackwardNow = false;
         isRunNow = false;
         isGroundingNow = false;
         isJumpNow = false;
         isStandNow = true;
-        lastW = false;
+        lastWS = false;
     }
 
     void Update()
@@ -37,18 +39,30 @@ public class HumanScript : MonoBehaviour
         else if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && !anim.GetCurrentAnimatorStateInfo(0).IsName("PunchLeft"))
             anim.Play("PunchLeft");
         //~~~~~~    Стоит на месте, не играет анимация приземления, объект не прыгнул и не атакует    ~~~~~~//
-        else if (!lastW && !anim.GetCurrentAnimatorStateInfo(0).IsName("Jump_Down") && !isJumpNow && !anim.GetCurrentAnimatorStateInfo(0).IsName("PunchLeft"))
+        else if (!lastWS && !anim.GetCurrentAnimatorStateInfo(0).IsName("Jump_Down") && !isJumpNow && !anim.GetCurrentAnimatorStateInfo(0).IsName("PunchLeft"))
             Stand();
 
 
         //~~~~~~    Ходьба и бег    ~~~~~~//
         if (Input.GetAxis("Vertical") > 0)
             Walk();
-        else if (Input.GetAxis("Vertical") <= 0)  // Клавиша W не нажимается
-            lastW = false;
+        else if (Input.GetAxis("Vertical") <= 0 && !Input.GetKey(KeyCode.S))  // Клавиши W и S не нажимаются
+            lastWS = false;
         else if (Input.GetKeyUp(KeyCode.LeftShift) || Input.GetKeyUp(KeyCode.RightShift))  // Бег остановлен
             anim.SetBool("isRun", false);
 
+        if (Input.GetKey(KeyCode.S))
+        {
+            //~~~~~~    Если объект стоит (не идёт, не бежит, не прыгает)    ~~~~~~//
+            if (!isWalkNow && !isRunNow && !isJumpNow && !isWalkBackwardNow)
+            {
+                anim.SetBool("isWalkBackward", true);  // Запуск анимации
+                isWalkBackwardNow = true;  // Объект идёт
+            }
+            //~~~~~~    Смещение позиции    ~~~~~~//
+            transform.position -= vector.transform.position - transform.position;  // Обект будет перемещаться дажево время прыжка или падения
+            lastWS = true;  // Клавиша S была нажата
+        }
 
         //~~~~~~    Поворот    ~~~~~~//
         if (Input.GetKey(KeyCode.D))
@@ -100,6 +114,7 @@ public class HumanScript : MonoBehaviour
         isGroundingNow = false;  // Объект не приземляется
 
         isWalkNow = false;  // Объект не идёт
+        isWalkBackwardNow = false;
         isRunNow = false;  // Объект не бежит
         isStandNow = true;  // Объект стоит
 
@@ -112,14 +127,14 @@ public class HumanScript : MonoBehaviour
     private void Walk()
     {
         //~~~~~~    Если объект стоит (не идёт, не бежит, не прыгает)    ~~~~~~//
-        if (!isWalkNow && !isRunNow && !isJumpNow)
+        if (!isWalkNow && !isRunNow && !isJumpNow && !isWalkBackwardNow)
         {
             anim.SetBool("isWalk", true);  // Запуск анимации
             isWalkNow = true;  // Объект идёт
         }
         //~~~~~~    Смещение позиции    ~~~~~~//
         transform.position += vector.transform.position - transform.position;  // Обект будет перемещаться дажево время прыжка или падения
-        lastW = true;  // Клавиша W была нажата
+        lastWS = true;  // Клавиша W была нажата
 
         //~~~~~~    Бег    ~~~~~~//
         if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)))
